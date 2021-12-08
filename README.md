@@ -48,6 +48,6 @@
 <summary> __THE CODE__
   </summary>
 
-#### Don't worry about it. Just copy paste <a href="https://github.com/hirneagabriel/AlienInvasion/blob/main/AlienInvasion.ino" target="_blank">this</a>. (kidding I'm going to explain it but not right now).
+#### Don't worry about it. Just copy paste <a href="https://github.com/hirneagabriel/AlienInvasion/blob/main/AlienInvasion.ino" target="_blank" rel="noreferrer noopener">this</a>. (kidding I'm going to explain it but not right now).
   
 </details>
