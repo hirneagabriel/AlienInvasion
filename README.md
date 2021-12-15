@@ -57,6 +57,79 @@
 <summary> __THE CODE__
   </summary>
 
-#### Don't worry about it. Just copy paste <a href="https://github.com/hirneagabriel/AlienInvasion/blob/main/AlienInvasion.ino" target="_blank" rel="noreferrer noopener">this</a>. (kidding I'm going to explain it but not right now).
-  
+#### The code can be found <a href="https://github.com/hirneagabriel/AlienInvasion/blob/main/AlienInvasion.ino" target="_blank" rel="noreferrer noopener">here</a>. 
+#### I'll explain the important functions that are not that straight forward. 
+#### For the menu part, I created an abstract class with some abstract functions. The onUp() onDown() onLeft() onRight() onPress() functions are called by the joystick menu function. And the displayMenu() function is being called when the LCD screen needs updates. Mostly when the joystick is used.
+```C++
+class Menu {
+  public:
+    virtual void onLeft() {};
+    virtual void onRight() {};
+    virtual void onUp() {};
+    virtual void onDown() {};
+    virtual void onPress() {};
+    virtual void displayMenu(LiquidCrystal& lcd) = 0;
+};
+```
+#### Each menu has its class that inheritance the abstract class.
+#### I'm going to explain a little bit class Settings Menu. the other classes have similar functionality. 
+```C++
+class SettingsMenu : public Menu {
+    int blinkDelay = 500;
+    String menu[5] = {
+      "Username", "Dificulty", "Contrast", "LCD Bright", "M Bright"
+    };
+    bool isEditing = false;
+    bool editName = false;
+    bool editDificulty = false;
+    bool editContrast = false;
+    bool editLedBrightness = false;
+    bool editMatrixBrightness = false;
+    int charPosition = 0;
+    int pointingArrow = 0;
+```
+- #### menu is an array of Strings. each string is an option
+- #### pointingArrow is the variable that indicates an option. if poitingArrow == 0 than the option is Username
+- #### bools that indicate if an option is selected
+```C++
+public:
+    void storeSettingsData() {
+      eeAddress = 0;
+      firstSave = true;
+      EEPROM.put(eeAddress, firstSave);
+      eeAddress += sizeof(bool);
+      EEPROM.put(eeAddress, username);
+      eeAddress += sizeof(username);
+      EEPROM.put(eeAddress, activeDificulty);
+      eeAddress += sizeof(int);
+      EEPROM.put(eeAddress, currentContrast);
+      eeAddress += sizeof(int);
+      EEPROM.put(eeAddress, currentBrightness);
+      eeAddress += sizeof(int);
+      EEPROM.put(eeAddress, matrixIntensity);
+      eeAddress += sizeof(int);
+    }
+```
+- #### called when an option is modified and saves the data to EEPROM.
+```C++
+void onPress() {
+      isEditing = !isEditing;
+      if (pointingArrow == 0) {
+        editName = !editName;
+      }
+      if (pointingArrow == 1) {
+        editDificulty = !editDificulty;
+      }
+      if (pointingArrow == 2) {
+        editContrast = !editContrast;
+      }
+      if (pointingArrow == 3) {
+        editLedBrightness = !editLedBrightness;
+      }
+      if (pointingArrow == 4) {
+        editMatrixBrightness = !editMatrixBrightness;
+      }
+    }
+```
+- #### called at the press of the joystick and change the current option to selected or not selected
 </details>
