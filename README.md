@@ -34,14 +34,23 @@
   - ##### one 8x8 led matrix
   - ##### one 2x16 LCD Display
   - ##### one MAX7219 Driver
-  - ##### 10k resitor 100 resitor and 220 resitor
+  - ##### 10k resitor 100 resitor 220 resitor and 1k resistor
   - ##### 10 µF capacitor and some ceramic capacitor
   - ##### some breadboards(I used 3)
  #### I'm not going to show how to connect each component because I have already connected all the components. I'm also too lazy to do a complete tutorial for this stuff. But I'm going to put some useful links(in the future).
- #### And if you think that my excuse for being lazy isn't good. Well, behold!
+ #### Version 1.0. It was my first time putting the project altogether and it worked but it had some imperfect contacts.
   
   ![20211208_131605](https://user-images.githubusercontent.com/61494964/145199783-2cd0015d-64a4-4c7f-849d-834ab1ea010d.jpg)
  #### Good luck with connecting all that wires! I mean, at least you don't have to go with this setup to the faculty and show it to the teacher in a WORKING STATE!  
+ #### After a 4 hour try to solder the project on a circuit board, I give up on the soldering thing because of the lack of time. 
+ #### So I build Version 1.2!
+ ##### Front view
+  ![20211215_124230](https://user-images.githubusercontent.com/61494964/146172343-776d8501-8762-4187-b89f-199f9d07fb94.jpg)
+ ##### Back view
+  ![20211215_124258](https://user-images.githubusercontent.com/61494964/146172442-86fddb9f-018a-460e-8b45-6d527258aafe.jpg)
+
+ #### It's a more stable setup that is fixated better in the cardboard box. I've never had a problem with the wire connection so far, and I can transport it safely to faculty in my bag. Probably the final state. Maybe in the future, I will make a more good looking setup in my free time. 
+ 
 </details>
 
 <details>
