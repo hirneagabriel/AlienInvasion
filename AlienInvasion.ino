@@ -1,5 +1,5 @@
 #include<LiquidCrystal.h>
-#include "LedControl.h" //  need the library
+#include "LedControl.h"
 #include <EEPROM.h>
 // lcd pins
 const int RS = 13;
@@ -25,7 +25,8 @@ const int loadPin = 7;
 const int shootButton = 3;
 // buzzer pin
 const int buzzerPin = 8;
-
+const int buzzerShootDuration = 200;
+const int buzzerLaserDuration = 300;
 // variables for joystick
 const int minThreshold = 300;
 const int maxThreshold = 600;
@@ -46,35 +47,113 @@ LiquidCrystal lcd(RS, enable, d4, d5, d6, d7);
 // buttons debounce system variables
 volatile unsigned long lastPress = 0;
 const int debounceTime = 100;
+// data read from the joytick button
 int SWData = 0;
+// data read from the button
 int shootButtonData = 0;
-//
-int currentState = 0;
+// index of the current menu (ex: main menu is 0)
+int activeMenu = 0;
+// score get from current game sesion
 int currentScore = 0;
 const int nameLenght = 3;
 const int maxDificulty = 3;
 int livesLeft = 3;
 
-// eeprom variables
+// variable use for first save in EEPROM
 bool firstSave = false;
-int eeAddress = 0;
 
-//data stored in eeprom name suggest what each control
+// data stored in eeprom
+// top 3 names
 char scoreNames[4][4] = {
   "AAA", "AAA", "AAA"
 };
+// top 3 scores
 int scores[] = {
   0, 0, 0
 };
+// lcd and matrix controls
 int currentBrightness = 100;
-int currentContrast = 130;
+int currentContrast = 50;
 int matrixIntensity = 2;
+// other settings
 char username[nameLenght + 1] = "AAA";
 int activeDificulty = 1;
-
+// end of variables stored in eeprom
 // set to true when lcd need update
 bool needsLCDUpdate = true;
-
+// images for 8x8 matrix used for menu
+const byte images[][8] {
+  {
+    B01000010,
+    B00100100,
+    B00111100,
+    B01111110,
+    B11011011,
+    B11111111,
+    B10100101,
+    B00000000
+  },
+  {
+    B00010100,
+    B00011101,
+    B00010101,
+    B11100000,
+    B10000000,
+    B11101100,
+    B00101000,
+    B11101100
+  },
+  {
+    B00101000,
+    B00101000,
+    B00010000,
+    B00010000,
+    B00010000,
+    B00010000,
+    B00101000,
+    B00101000
+  },
+  {
+    B00011000,
+    B00111100,
+    B01011010,
+    B01111110,
+    B01111110,
+    B00100100,
+    B01111110,
+    B10100101
+  },
+  {
+    B00000000,
+    B00000000,
+    B00100100,
+    B00100100,
+    B00000000,
+    B00111100,
+    B01000010,
+    B00000000
+  },
+  {
+    B00000000,
+    B00000000,
+    B00100100,
+    B00100100,
+    B00000000,
+    B01000010,
+    B00111100,
+    B00000000
+  },
+  {
+    B00000000,
+    B00110000,
+    B00111000,
+    B00111100,
+    B00111110,
+    B00111100,
+    B00111000,
+    B00110000
+  }
+};
 // custom lcd characters
 byte arrow[] = {
   B00000,
@@ -210,7 +289,7 @@ byte arrowUp[] = {
 
 
 // change this to make the song slower or faster
-int tempo = 225;
+int tempo = 210;
 
 // music used in the intro
 const int melody[] PROGMEM = {
@@ -238,21 +317,31 @@ int divider = 0, noteDuration = 0;
 
 
 int matrixSize = 7;
+// set to true when the game start
 bool isPlaying = false;
 bool gameIsReadytoPlay = true;
-bool isNewHighScore = false;
-
+// true when a score is in top 3
+bool isNewHighScore;
+// nr of lasers disponible to shoot. at the start of the game is 0.
+volatile int nrOfSpecialLasers = 0;
+// increase this to get lasers drop more often
+const int percentOfLuckForLaser = 4;
 
 // game variables used only in
+// ship collum index
 int ship = 0;
+// blink interval when imortal
 const int blinkDelay = 100;
+// set to true when ship is not vulnerable
 bool isImortal = true;
 const int imortalityDuration = 3000;
 long int imortalityTimer = 0;
 // set to true when matrix needs to be update
 bool needScreenUpdate = false;
+// timers
 long int timer = 0;
 long int timerBullet = 0;
+// change this make bullet faster or slower
 const int bulletSpeed = 30;
 // the duration of the enemy's standing still. depends on the dificulty
 int frame = 1200;
@@ -271,12 +360,18 @@ const float speedConstant = 1.02;
 int scoreByDificulty;
 // int generated randomly
 int randomInt;
+int randomIntLaser;
 // each enemy will move on columns only
-// if the column is !=0 an enemy will spawn on that column, the value on each column represents the row on whitch the enemy is sitting
+// if the column is !=0 an enemy will spawn on that column, the value on each column represents the row on witch the enemy is sitting
 int enemyColumns[] = {
   0, 0, 0, 0, 0, 0, 0, 0
 };
-// bullets have the same proprietes as the enemys.
+// if an enemy is shoot is a chance that an laser is droped
+// laser work like the enemys.
+int laserColumns[] = {
+  0, 0, 0, 0, 0, 0, 0, 0
+};
+// bullets work like the enemys.
 volatile int shootColumns[] = {
   0, 0, 0, 0, 0, 0, 0, 0
 };
@@ -284,54 +379,76 @@ volatile int shootColumns[] = {
 // contains functions that are called by the joystick and a display fuction that displays stuf on the lcd
 class Menu {
   public:
+    // called by the joystick
     virtual void onLeft() {};
     virtual void onRight() {};
     virtual void onUp() {};
     virtual void onDown() {};
     virtual void onPress() {};
+    // display stuff on the lcd
     virtual void displayMenu(LiquidCrystal& lcd) = 0;
+    // display images to the 8x8 matrix
+    void displayImage(const byte* image) {
+      for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+          lc.setLed(0, i, j, bitRead(image[i], 7 - j));
+        }
+      }
+    }
 };
 
 // main menu class
 class MainMenu : public Menu {
+    // used to show data on the lcd
     String menu[5] = {
       "Play", "Highscore", "Settings", "About"
     };
+    // index controled by the joystick to point to a certain menu from the string array
     int pointingArrow = 0;
   public:
+    // joystick moves up index get's smaller
     void onUp() {
       pointingArrow -= 1;
       if (pointingArrow < 0) {
         pointingArrow = 0;
       }
     }
+    // joystick moves down index get's bigger
     void onDown() {
       pointingArrow += 1;
       if (pointingArrow > 3) {
         pointingArrow = 3;
       }
     }
+    // on press the menu change to the selected menu
     void onPress() {
       switch (pointingArrow) {
         case 0:
-          currentState = 1;
+          // play menu
+          activeMenu = 1;
           break;
         case 1:
-          currentState = 2;
+          // hiscore menu
+          activeMenu = 2;
           break;
         case 2:
-          currentState = 3;
+          // settings menu
+          activeMenu = 3;
           break;
         case 3:
-          currentState = 4;
+          // about menu
+          activeMenu = 4;
           break;
         default:
           break;
       }
     }
+    // display information on the lcd
     void displayMenu(LiquidCrystal& lcd) {
       lcd.clear();
-
+      // display on the matrix an image
+      displayImage(images[0]);
+      //if index is not last display on the first and second row index menu and index + 1 menu
       if (pointingArrow < 3) {
         lcd.write(byte(0));
         lcd.print(menu[pointingArrow]);
@@ -339,17 +456,22 @@ class MainMenu : public Menu {
         lcd.print(" ");
         lcd.print(menu[pointingArrow + 1]);
       }
+      // if index is last display on the first and second row index - 1 menu and index menu
       if (pointingArrow == 3) {
         lcd.print(" ");
         lcd.print(menu[pointingArrow - 1]);
         lcd.setCursor(0, 1);
+        // → arrow
         lcd.write(byte(0));
         lcd.print(menu[pointingArrow]);
         lcd.setCursor(15, 0);
+        // ↑ arrow
         lcd.write(byte(1));
       }
+      // display at the end of each row an helping arrow to suggest what moves can joystick make
       if (pointingArrow == 0) {
         lcd.setCursor(15, 1);
+        // ↓ arrow
         lcd.write(byte(2));
       }
       if (pointingArrow > 0 && pointingArrow < 3) {
@@ -364,36 +486,39 @@ class MainMenu : public Menu {
 
 // play menu class
 class PlayMenu : public Menu {
-    long int startTime;
-    bool gameOver = false;
   public:
+    // on press of joystick change state from ready to play to playing or form not ready to play to ready to play
     void onPress() {
       if (gameIsReadytoPlay == false) {
         gameIsReadytoPlay = true;
       } else {
         if (isPlaying == false) {
-          startTime = millis();
           isPlaying = true;
+          // at the start of the game reset game lives and score
           livesLeft = 3;
           currentScore = 0;
         }
       }
     }
-
+    // exit to my menu if is ok to do so
     void onLeft() {
-      if (isPlaying == false) {
-        currentState = 0;
+      if (isPlaying == false && gameIsReadytoPlay == true) {
+        activeMenu = 0;
       }
     }
-
+    // display stuf on the lcd
     void displayMenu(LiquidCrystal& lcd) {
-
+      // if game has started
       if (isPlaying == true) {
         lcd.clear();
-        lcd.print(" ");
+        // print the username
+        lcd.print(username);
+        lcd.print(":");
+        // for nr of lives left draw one heart
         for (int i = 0; i < livesLeft; i++)
           lcd.write(byte(3));
         lcd.setCursor(8, 0);
+        // print current dificulty
         if (activeDificulty == 1) {
           lcd.print("Eazy");
         }
@@ -405,26 +530,42 @@ class PlayMenu : public Menu {
         }
 
         lcd.setCursor(0, 1);
-        lcd.print("Score: ");
+        // print the score
+        lcd.print("SC: ");
         lcd.print(currentScore);
+        lcd.setCursor(8, 1);
+        // print nr of lasers
+        lcd.print("Laser: ");
+        lcd.print(nrOfSpecialLasers);
       }
       else {
+        // if game is ready to be played
         if (gameIsReadytoPlay == true) {
+          // draw an image on the matrix
+          displayImage(images[6]);
           lcd.clear();
+          // print messages for start of the game
           lcd.print(" Press the btn");
           lcd.setCursor(0, 1);
           lcd.print("   to play");
         } else {
+          // if the game is not ready to play and is not playing show the score and a message.
           lcd.clear();
+          // if top 3 has changed print a messge and show an image on matrix
           if (isNewHighScore == true) {
+            displayImage(images[5]);
             lcd.print("You're in top 3!");
             lcd.setCursor(0, 1);
-            lcd.print("Score: ");
+            lcd.print(username);
+            lcd.print("'s SC: ");
             lcd.print(currentScore);
           } else {
+            // if top 3 hasn't changed print a messge and show an image on matrix
+            displayImage(images[4]);
             lcd.print("  Game over");
             lcd.setCursor(0, 1);
-            lcd.print("Score: ");
+            lcd.print(username);
+            lcd.print("'s SC: ");
             lcd.print(currentScore);
           }
         }
@@ -436,41 +577,48 @@ class PlayMenu : public Menu {
 
 // Highscore menu class
 class HiScoreMenu : public Menu {
-    int currentLine = 0;
+    int pointingArrow = 0;
   public:
+    // same controls as the main menu
     void onUp() {
-      currentLine -= 1;
-      if (currentLine < 0) {
-        currentLine = 0;
+      pointingArrow -= 1;
+      if (pointingArrow < 0) {
+        pointingArrow = 0;
       }
 
     };
     void onDown() {
-      currentLine += 1;
-      if (currentLine > 1) {
-        currentLine = 1;
+      pointingArrow += 1;
+      if (pointingArrow > 1) {
+        pointingArrow = 1;
       }
     };
+    // go to main menu on left
     void onLeft() {
-      currentState = 0;
+      activeMenu = 0;
     }
+    // go to main menu on right
     void onPress() {
-      currentState = 0;
+      activeMenu = 0;
     }
     void displayMenu(LiquidCrystal& lcd) {
+      // show on the matrix an image
+      displayImage(images[1]);
       lcd.clear();
-      lcd.print(currentLine + 1);
+      // print leaderboard
+      lcd.print(pointingArrow + 1);
       lcd.print(".");
-      lcd.print(scoreNames[currentLine]);
+      lcd.print(scoreNames[pointingArrow]);
       lcd.print(": ");
-      lcd.print(scores[currentLine]);
+      lcd.print(scores[pointingArrow]);
       lcd.setCursor(0, 1);
-      lcd.print(currentLine + 2);
+      lcd.print(pointingArrow + 2);
       lcd.print(".");
-      lcd.print(scoreNames[currentLine + 1]);
+      lcd.print(scoreNames[pointingArrow + 1]);
       lcd.print(": ");
-      lcd.print(scores[currentLine + 1]);
-      if (currentLine == 0) {
+      lcd.print(scores[pointingArrow + 1]);
+      // print helping up and down arrows at the end of the rows
+      if (pointingArrow == 0) {
         lcd.setCursor(15, 1);
         lcd.write(byte(2));
       }
@@ -481,26 +629,30 @@ class HiScoreMenu : public Menu {
 
     }
 
-
 };
 
 // settings Menu class
 class SettingsMenu : public Menu {
+    // blink when editing someting
     int blinkDelay = 500;
-    String menu[5] = {
-      "Username", "Dificulty", "Contrast", "LCD Bright", "M Bright"
+    // settings to be changed
+    String menu[6] = {
+      "Username", "Dificulty", "Contrast", "LCD Bright", "M Bright", "ResetHiScore"
     };
+    // bools set to true when an settings is in edit mode
     bool isEditing = false;
     bool editName = false;
     bool editDificulty = false;
     bool editContrast = false;
     bool editLedBrightness = false;
     bool editMatrixBrightness = false;
+    bool scoreReset = false;
     int charPosition = 0;
     int pointingArrow = 0;
   public:
+    // store changed data in eeprom
     void storeSettingsData() {
-      eeAddress = 0;
+      int eeAddress = 0;
       firstSave = true;
       EEPROM.put(eeAddress, firstSave);
       eeAddress += sizeof(bool);
@@ -514,9 +666,20 @@ class SettingsMenu : public Menu {
       eeAddress += sizeof(int);
       EEPROM.put(eeAddress, matrixIntensity);
       eeAddress += sizeof(int);
+      for (int i = 0; i < 3; i++) {
+        EEPROM.put(eeAddress, scores[i]);
+        eeAddress += sizeof(int);
+      }
+      for (int i = 0; i < 3; i++) {
+        EEPROM.put(eeAddress, scoreNames[i]);
+        eeAddress += sizeof(scoreNames[i]);
+      }
     }
+    // on the press of the joystick
     void onPress() {
+      // the state is changed to editing or not editing
       isEditing = !isEditing;
+      // change the state of the selected variable
       if (pointingArrow == 0) {
         editName = !editName;
       }
@@ -532,12 +695,24 @@ class SettingsMenu : public Menu {
       if (pointingArrow == 4) {
         editMatrixBrightness = !editMatrixBrightness;
       }
+      // if the reset leaderboard setting is selected
+      if (pointingArrow == 5) {
+        scoreReset = true;
+        // reset each name with "AAA" and each score with 0
+        for (int i = 0; i < 3; i++) {
+          strcpy(scoreNames[i], "AAA");
+          scores[i] = 0;
+        }
+        isEditing = !isEditing;
+      }
     }
     void onLeft() {
+      // if editing mode is not activated exit to main menu
       if (isEditing == false) {
-        currentState = 0;
+        activeMenu = 0;
         storeSettingsData();
       }
+      // if username is in edit mode change the index character to be changed
       if (editName == true) {
         charPosition -= 1;
         if (charPosition < 0) {
@@ -555,6 +730,7 @@ class SettingsMenu : public Menu {
         if (currentContrast < 0) {
           currentContrast = 0;
         }
+        // update the variable for live change on the lcd
         analogWrite(contrastPin, currentContrast);
       }
       if (editLedBrightness == true) {
@@ -562,6 +738,7 @@ class SettingsMenu : public Menu {
         if (currentBrightness < 0) {
           currentBrightness = 0;
         }
+        // update the variable for live change on the lcd
         analogWrite(ledDisplayPin, currentBrightness);
       }
       if (editMatrixBrightness == true) {
@@ -569,9 +746,11 @@ class SettingsMenu : public Menu {
         if (matrixIntensity < 0) {
           matrixIntensity = 0;
         }
+        // update the variable for live change on the matrix
         lc.setIntensity(0, matrixIntensity);
       }
     }
+    // like the onLeft function
     void onRight() {
       if (editName == true) {
         charPosition += 1;
@@ -587,8 +766,8 @@ class SettingsMenu : public Menu {
       }
       if (editContrast == true) {
         currentContrast += 10;
-        if (currentContrast > 255) {
-          currentContrast = 255;
+        if (currentContrast > 80) {
+          currentContrast = 80;
         }
         analogWrite(contrastPin, currentContrast);
       }
@@ -611,12 +790,14 @@ class SettingsMenu : public Menu {
     }
 
     void onDown() {
+      // if not in edit mode change the index of the pointing arrow
       if (isEditing == false) {
         pointingArrow += 1;
-        if (pointingArrow > 4) {
-          pointingArrow = 4;
+        if (pointingArrow > 5) {
+          pointingArrow = 5;
         }
       }
+      // if name is in editing mode change the current character
       if (editName == true) {
         username[charPosition] = username[charPosition] + 1;
         if (username[charPosition] > 'Z') {
@@ -624,13 +805,16 @@ class SettingsMenu : public Menu {
         }
       }
     }
+
     void onUp() {
+      // if not in edit mode change the index of the pointing arrow
       if (isEditing == false) {
         pointingArrow -= 1;
         if (pointingArrow < 0) {
           pointingArrow = 0;
         }
       }
+      // if name is in editing mode change the current character
       if (editName == true) {
         username[charPosition] = username[charPosition] - 1;
         if (username[charPosition] < 'A') {
@@ -638,26 +822,19 @@ class SettingsMenu : public Menu {
         }
       }
     }
-    void displayMatrix(bool lightOnOff) {
-      for (int i = 0 ; i <= matrixSize; i++)
-        for (int j = 0; j <= matrixSize; j++)
-          lc.setLed(0, i, j, lightOnOff);
-    }
+
     void displayMenu(LiquidCrystal& lcd) {
-      if (editMatrixBrightness == true)
-        displayMatrix(true);
-      else {
-        displayMatrix(false);
-      }
+      displayImage(images[2]);
       lcd.clear();
-      if (pointingArrow < 4) {
+      if (pointingArrow < 5) {
+        // print on the first row
         lcd.print(" ");
         lcd.print(menu[pointingArrow]);
         lcd.print(" ");
         if (pointingArrow == 0) {
+          // add blinking effect to the selected character if the name is in edit mode
           if (editName == true) {
             if ((millis() % (2 * blinkDelay)) > blinkDelay) {
-              //lcd.setCursor(10 + charPosition, pointingArrow);
               for (int i = 0 ; i < 3; i++) {
                 if (charPosition == i) {
                   lcd.print("_");
@@ -675,13 +852,15 @@ class SettingsMenu : public Menu {
             lcd.print(username);
           }
         }
-
         if (pointingArrow == 1)
           lcd.print(activeDificulty);
         if (pointingArrow == 2)
           lcd.print(currentContrast);
         if (pointingArrow == 3)
           lcd.print(currentBrightness);
+        if (pointingArrow == 4)
+          lcd.print(matrixIntensity);
+        // print on the second row
         lcd.setCursor(0, 1);
         lcd.print(" ");
         lcd.print(menu[pointingArrow + 1]);
@@ -696,22 +875,22 @@ class SettingsMenu : public Menu {
           lcd.print(matrixIntensity);
         lcd.setCursor(0, 0);
       }
-      if (pointingArrow == 4) {
+      if (pointingArrow == 5) {
+        // print on the first row
         lcd.print(" ");
         lcd.print(menu[pointingArrow - 1]);
         lcd.print(" ");
-        lcd.print(currentBrightness);
+        lcd.print(matrixIntensity);
+        // print on the second row
         lcd.setCursor(0, 1);
         lcd.print(" ");
         lcd.print(menu[pointingArrow]);
-        lcd.print(" ");
-        lcd.print(matrixIntensity);
         lcd.setCursor(15, 0);
         lcd.write(byte(1));
         lcd.setCursor(0, 1);
       }
 
-
+      // print arrows an blink if in editing mode
       if (isEditing == false) {
         lcd.write(byte(0));
       } else {
@@ -721,22 +900,28 @@ class SettingsMenu : public Menu {
           lcd.print(" ");
         }
       }
-      if (editName == true) {
-        if ((millis() % (2 * blinkDelay)) > blinkDelay) {
-          lcd.setCursor(10 + charPosition, pointingArrow);
-          lcd.print("_");
-        }
-      }
+
       if (pointingArrow == 0) {
         lcd.setCursor(15, 1);
         lcd.write(byte(2));
       }
-      if (pointingArrow > 0 && pointingArrow < 4) {
+      if (pointingArrow > 0 && pointingArrow < 5) {
         lcd.setCursor(15, 1);
         lcd.write(byte(2));
         lcd.setCursor(15, 0);
         lcd.write(byte(1));
       }
+      // if the reset function has been activated show a custom message
+      if (scoreReset == true) {
+        lcd.clear();
+        lcd.print("Leaderboard has");
+        lcd.setCursor(0, 1);
+        lcd.print("been reset!");
+        scoreReset = false;
+        delay(1000);
+        needsLCDUpdate = true;
+      }
+      // if editing lcd will constantly be updated for blinking effect
       if (isEditing == true) {
         needsLCDUpdate = true;
         delay(50);
@@ -749,19 +934,23 @@ class AboutMenu : public Menu {
     long int timerScroll = 0;
     int intervalLeft = 0;
     int intervalRight = 16;
+    int scrollSpeed = 400;
     String message = "Made by Hirnea Gabriel. Github link: https://github.com/hirneagabriel/AlienInvasion";
   public:
 
     void onLeft() {
-      currentState = 0;
+      activeMenu = 0;
     }
-
+    // scroling text menu
     String scrollText(String text) {
       String result;
-      String proccesString = "               " + text + "             ";
+      // add some spaces to the message (15 spaces are recomended)
+      String proccesString = "               " + text + "               ";
+      // get 16 characters and increase the indexInterval
       result = proccesString.substring(intervalRight, intervalLeft);
       intervalLeft++;
       intervalRight++;
+      // if the end is reached start from the beginning
       if (intervalRight > proccesString.length()) {
         intervalRight = 16;
         intervalLeft = 0;
@@ -769,38 +958,40 @@ class AboutMenu : public Menu {
       return result;
     }
     void displayMenu(LiquidCrystal& lcd) {
-
-      if (millis() - timerScroll > 400) {
+      // diplay image in the matrix
+      displayImage(images[3]);
+      // refresh at the scroll interval
+      if (millis() - timerScroll > scrollSpeed) {
         lcd.clear();
         timerScroll = millis();
         lcd.print(" Alien Invasion");
         lcd.setCursor(0, 1);
+        // show the result to the second row
         lcd.print(scrollText(message));
         timerScroll = millis();
       }
     }
 
-
 };
 
-// declaration of the classes
+// instance of the classes
 MainMenu mainMenu;
 HiScoreMenu hiScoreMenu;
 SettingsMenu settingsMenu;
 PlayMenu playMenu;
 AboutMenu aboutMenu;
 
-// function that swich between classes
+// set an index for each menu class and return the instance of that class
 Menu& currentMenu() {
-  if (currentState == 0)
+  if (activeMenu == 0)
     return mainMenu;
-  if (currentState == 2)
+  if (activeMenu == 2)
     return hiScoreMenu;
-  if (currentState == 3)
+  if (activeMenu == 3)
     return settingsMenu;
-  if (currentState == 1)
+  if (activeMenu == 1)
     return playMenu;
-  if (currentState == 4)
+  if (activeMenu == 4)
     return aboutMenu;
 }
 
@@ -808,7 +999,7 @@ Menu& currentMenu() {
 void jsForMenu() {
   xValue = analogRead(VRx);
   yValue = analogRead(VRy);
-  Serial.println(yValue);
+  // call curentMenu method depending on the move of the joystick
   if (yValue <= minThresholdMenu && isMovedY == false) {
     isMovedY = true;
     currentMenu().onDown();
@@ -858,7 +1049,6 @@ void getData() {
     address += sizeof(int);
     EEPROM.get(address, matrixIntensity);
     address += sizeof(int);
-    eeAddress = address;
 
     for (int i = 0; i < 3; i++) {
       EEPROM.get(address, scores[i]);
@@ -886,6 +1076,7 @@ void putHiScoreData() {
 
 
 // function for controling the ship with joystick
+// control the ship on the last row of the matrix
 void jsForGame() {
   xValue = analogRead(VRx);
   if (xValue < minThreshold) {
@@ -910,9 +1101,12 @@ void jsForGame() {
   }
 }
 
-// checking if the leaderboard is changed and change the leaderboard
+// return true if top 3 is changed
 bool checkHighScore() {
+  bool isNewTop3 = false;
+  // for each leaderboard score check if current score is bigger.
   for (int i = 0 ; i < 3; i++) {
+    // update the leaderboard
     if (scores[i] < currentScore) {
       for (int j = 2 ; j >= i ; j--) {
         scores[j] = scores[j - 1];
@@ -920,25 +1114,30 @@ bool checkHighScore() {
       }
       scores[i] = currentScore;
       strcpy(scoreNames[i], username);
+      // save data in eeprom
       putHiScoreData();
-      return true;
+      isNewTop3 = true;
       break;
     }
   }
-  return false;
+  return isNewTop3;
 }
 
 // checking if player have lives left
 void checkLivesLeft() {
+  // if ship not imortal decrease nr of lives
   if (isImortal == false) {
     livesLeft--;
     needsLCDUpdate = true;
+    // if no lives left  and check if the score
     if (livesLeft < 0) {
-      isPlaying = false;
-      gameIsReadytoPlay = false;
       isNewHighScore = checkHighScore();
+      isPlaying = false;
+      // game is stopped
+      gameIsReadytoPlay = false;
     }
     else {
+      // else ship becomes imortal for 3 seconds
       isImortal = true;
       imortalityTimer = millis();
     }
@@ -948,6 +1147,7 @@ void checkLivesLeft() {
 // display stuf on the matrix
 void displayGame() {
   lc.clearDisplay(0);
+  // if ship is imortal blink the ship dot for 3 seconds
   if (isImortal == false) {
     lc.setLed(0, matrixSize, ship, true);
   } else {
@@ -962,15 +1162,23 @@ void displayGame() {
       isImortal = false;
     }
   }
+  // show the enemys
   for (int i = 0; i <= matrixSize; i++) {
+    // show the enemys
     if (enemyColumns[i] > 0) {
       lc.setLed(0, enemyColumns[i] - 2, i, true);
       lc.setLed(0, enemyColumns[i] - 3, i, true);
     }
+    // show the bullet
     if (shootColumns[i] > 0) {
       lc.setLed(0, shootColumns[i], i, true);
     }
+    // show the laser drops
+    if (laserColumns[i] > 0) {
+      lc.setLed(0, laserColumns[i] - 2, i, true);
+    }
   }
+  // if the game is over clearDisplay
   if (isPlaying == false) {
     lc.clearDisplay(0);
   }
@@ -979,43 +1187,73 @@ void displayGame() {
 // game logic
 
 void game() {
-
+  // for each frame
   if (millis() - timer > frame) {
-    //
+    // increase the score
     currentScore += scoreByDificulty;
+    // update the screen
     needsLCDUpdate = true;
     timer = millis();
+    // at increaseSpeed frames
     if (frameCounter == increaseSpeed) {
+      // the frame time is decresed
       frame = frame / speedConstant;
+      // set the frameCounter to 0
       frameCounter = 0;
     }
+    // chose a random int from 0 to matrixSize
     randomInt = random(0, matrixSize + 1);
-    // if no obj in selected column create one object in row 1
+    // if no obj in the radom column create one object in  row 1
     if (enemyColumns[randomInt] == 0) {
       enemyColumns[randomInt] = 1;
     }
+    // increase the frameCounter
     frameCounter++;
 
 
     for (int i = 0; i <= matrixSize; i++) {
-      if (enemyColumns[i] == 10) { // object out of view
+      // enemy out of view
+      if (enemyColumns[i] == 10) {
+        //set the enemy row to 0 so it can be use again and decrese one life
         enemyColumns[i] = 0;
         checkLivesLeft();
       }
+      // same witch laser drop
+      if (laserColumns[i] == 9) {
+        laserColumns[i] = 0;
+      }
+      // else lower the enemy and the laser drop
       if (enemyColumns[i] != 0) {
         enemyColumns[i]++;
       }
+
+      if (laserColumns[i] != 0) {
+        laserColumns[i]++;
+      }
+
     }
 
     needScreenUpdate = true;
   }
+  // bullet is moving at a constant speed until it collides with a enemy
   if (millis() - timerBullet > bulletSpeed) {
     for (int i = 0; i <= matrixSize; i++) {
+      // if a bullet exist
       if (shootColumns[i] != 0) {
+        // check collision with enemy
         if (shootColumns[i] < enemyColumns[i]) {
+          // if collision exist get a random int from 0 to 100
+          randomIntLaser = random(0, 100);
+          // if the int is lower than 4
+          if (randomIntLaser <= percentOfLuckForLaser) {
+            // drop a laser
+            laserColumns[i] = enemyColumns[i];
+          }
+          // destroy te bullet and the enemy
           shootColumns[i] = 0;
           enemyColumns[i] = 0;
         } else {
+          // else the bullet continue
           shootColumns[i]--;
         }
       }
@@ -1023,8 +1261,19 @@ void game() {
     timerBullet = millis();
     needScreenUpdate = true;
   }
-  if (enemyColumns[ship] == 10 or enemyColumns[ship] == 9) {
+  // enemy collide with the ship
+  if (enemyColumns[ship] == 10 || enemyColumns[ship] == 9) {
+    // check if game is over
     checkLivesLeft();
+    enemyColumns[ship] = 0;
+  }
+  // if ship colides with laser drop get one laser ability
+  if (laserColumns[ship] == 9) {
+    // 9 max lasers
+    if (nrOfSpecialLasers < 9) {
+      nrOfSpecialLasers++;
+    }
+    laserColumns[ship] = 0;
   }
 
 }
@@ -1049,17 +1298,21 @@ void gameInitialization() {
     increaseSpeed = increaseSpeedHard;
     scoreByDificulty = 3;
   }
+  nrOfSpecialLasers = 0;
 }
-// function for shooting at the press of the button
+
+// intrerupt function for shooting at the press of the button
 void shoot() {
   volatile unsigned long intrerruptTime = 0;
   intrerruptTime = millis();
   if (intrerruptTime - lastPress > debounceTime) {
-    if (shootColumns[ship] == 0) {
-      shootColumns[ship] = 7;
-      tone(buzzerPin, 800, 200);
+    if (isPlaying == true) {
+      // shoot a bullet and make a sound
+      if (shootColumns[ship] == 0) {
+        shootColumns[ship] = 7;
+        tone(buzzerPin, NOTE_G5, buzzerShootDuration);
+      }
     }
-
   }
   lastPress = millis();
 }
@@ -1069,8 +1322,20 @@ void buttonIsPressed() {
   volatile unsigned long intrerruptTime = 0;
   intrerruptTime = millis();
   if (intrerruptTime - lastPress > debounceTime) {
+    // call the current menu function
     currentMenu().onPress();
     needsLCDUpdate = true;
+    if (isPlaying == true) {
+      // deploy a super laser and make a sound
+      if (nrOfSpecialLasers != 0) {
+        for (int i = 0; i <= matrixSize; i++) {
+          shootColumns[i] = 7;
+          tone(buzzerPin, NOTE_C6, buzzerLaserDuration);
+        }
+        //decrese nr of lasers
+        nrOfSpecialLasers--;
+      }
+    }
   }
   lastPress = millis();
 }
@@ -1106,12 +1371,15 @@ void introMusic() {
 
 // function that helps with button debouncing
 void debounceButton() {
+  // if the button is down reset the lastPress variable
   SWData = digitalRead(SW);
   shootButtonData = digitalRead(shootButton);
   if (SWData == 0 || shootButtonData == 0) {
     lastPress = millis();
   }
 }
+
+
 
 void setup() {
 
@@ -1158,12 +1426,14 @@ void setup() {
 
 
 void loop() {
+  // eliminate debounce of the button
   debounceButton();
   // control the menu with joystick
   jsForMenu();
-  // exception for about menu that always needs to be updated
+
   // if the screen needs to be update it's going to be updated
-  if (needsLCDUpdate == true || currentState == 4) {
+  // exception for about menu that always needs to be updated
+  if (needsLCDUpdate == true || activeMenu == 4) {
     needsLCDUpdate = false;
     currentMenu().displayMenu(lcd);
 
@@ -1175,7 +1445,7 @@ void loop() {
   }
   // game is running
   if (isPlaying == true) {
-
+    // move ship at constant speed
     if (millis() - lastMoved > moveInterval) {
       jsForGame();
       lastMoved = millis();
