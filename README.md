@@ -7,6 +7,7 @@
   </summary>
 
 #### AlienInvasion is a game where you are the last remaining hope of humankind! Get in your ship and defend the earth from the aliens! Kill as much enemys as you can. Don't let enemies pass you or the Earth is doomed!!!
+#### The game is inspired by old games like <a href="https://www.youtube.com/watch?v=tKobl50jrLk" target="_blank" rel="noreferrer noopener">Space Impact</a> and <a href="https://www.youtube.com/watch?v=MU4psw3ccUI&t=99s" target="_blank" rel="noreferrer noopener">Space Invaders</a>. 
   
 </details>
 
@@ -18,7 +19,7 @@
 - ##### In an 8x8 led matrix the ship is... a dot and the enemies are... also red dots. But I will make the enemies 2 dots so we can differentiate the enemy from the player.
   
 - ##### For the controls, I choose a joystick. And for the shooting part, I'm going to use a separate button. Oh, and the thingy that we shoot is going to be? Yes! You guessed it a dot!
-  
+- ##### If the joystick is pressed a special ability will take place (a laser will kill all the enemies). 
 - ##### So we have the ship that is going to move left and right on the last row. And we have the enemies coming toward us on the columns at a speed that is going to increase over time. If the enemies pass us or hit us, we are going to lose a life. If we lose all lives we die.
 </details>
 
@@ -35,7 +36,7 @@
   - ##### one 2x16 LCD Display
   - ##### one MAX7219 Driver
   - ##### 10k resitor 100 resitor 220 resitor and 1k resistor
-  - ##### 10 µF capacitor and some ceramic capacitor
+  - ##### 2 10 µF capacitor and one ceramic capacitor
   - ##### some breadboards(I used 3)
  #### I'm not going to show how to connect each component because I have already connected all the components. I'm also too lazy to do a complete tutorial for this stuff. But I'm going to put some useful links(in the future).
  #### Version 1.0. It was my first time putting the project altogether and it worked but it had some imperfect contacts.
@@ -58,78 +59,12 @@
   </summary>
 
 #### The code can be found <a href="https://github.com/hirneagabriel/AlienInvasion/blob/main/AlienInvasion.ino" target="_blank" rel="noreferrer noopener">here</a>. 
-#### I'll explain the important functions that are not that straight forward. 
-#### For the menu part, I created an abstract class with some abstract functions. The onUp() onDown() onLeft() onRight() onPress() functions are called by the joystick menu function. And the displayMenu() function is being called when the LCD screen needs updates. Mostly when the joystick is used.
-```C++
-class Menu {
-  public:
-    virtual void onLeft() {};
-    virtual void onRight() {};
-    virtual void onUp() {};
-    virtual void onDown() {};
-    virtual void onPress() {};
-    virtual void displayMenu(LiquidCrystal& lcd) = 0;
-};
-```
-#### Each menu has its class that inheritance the abstract class.
-#### I'm going to explain a little bit class Settings Menu. the other classes have similar functionality. 
-```C++
-class SettingsMenu : public Menu {
-    int blinkDelay = 500;
-    String menu[5] = {
-      "Username", "Dificulty", "Contrast", "LCD Bright", "M Bright"
-    };
-    bool isEditing = false;
-    bool editName = false;
-    bool editDificulty = false;
-    bool editContrast = false;
-    bool editLedBrightness = false;
-    bool editMatrixBrightness = false;
-    int charPosition = 0;
-    int pointingArrow = 0;
-```
-- #### menu is an array of Strings. each string is an option
-- #### pointingArrow is the variable that indicates an option. if poitingArrow == 0 than the option is Username
-- #### bools that indicate if an option is selected
-```C++
-public:
-    void storeSettingsData() {
-      eeAddress = 0;
-      firstSave = true;
-      EEPROM.put(eeAddress, firstSave);
-      eeAddress += sizeof(bool);
-      EEPROM.put(eeAddress, username);
-      eeAddress += sizeof(username);
-      EEPROM.put(eeAddress, activeDificulty);
-      eeAddress += sizeof(int);
-      EEPROM.put(eeAddress, currentContrast);
-      eeAddress += sizeof(int);
-      EEPROM.put(eeAddress, currentBrightness);
-      eeAddress += sizeof(int);
-      EEPROM.put(eeAddress, matrixIntensity);
-      eeAddress += sizeof(int);
-    }
-```
-- #### called when an option is modified and saves the data to EEPROM.
-```C++
-void onPress() {
-      isEditing = !isEditing;
-      if (pointingArrow == 0) {
-        editName = !editName;
-      }
-      if (pointingArrow == 1) {
-        editDificulty = !editDificulty;
-      }
-      if (pointingArrow == 2) {
-        editContrast = !editContrast;
-      }
-      if (pointingArrow == 3) {
-        editLedBrightness = !editLedBrightness;
-      }
-      if (pointingArrow == 4) {
-        editMatrixBrightness = !editMatrixBrightness;
-      }
-    }
-```
-- #### called at the press of the joystick and change the current option to selected or not selected
+#### The project is built primarily in 2 parts:
+##### - LCD menu
+##### For the menu, I created an abstract class that will serve as a base for each menu option(Play, HiScore, Settings, About) with methods that will be called by the joystick commands. From that abstract class, I created other classes that will inherit the abstract class. I did that so I could control all the menus with one function. 
+##### - Game logic
+##### The game has 2 main functions: one for game logic and one for displaying on the matrix.
+##### The game function controls all the logic behind the game. Each game object can only move on one column. So for each type of object, I made an array of length 8. One controls the enemies, one the bullets, and one the laser drop.  So if the arrayOfBullet[1] = 0 that means that there are no bullets in column 1, if the arrayOfBullet[1] = 6 that means that there is one bullet in collum 1 row 6.  
+##### The enemies will be spawned randomly. They will stay still for one frame duration, then descend to the player. Depending on the difficulty, at k frames, the frame duration will decrease. If one enemy is out of view on a matrix the enemy will be set to 0 and one life from the player will be taken. If a collision with the ship is detected also one life is taken. If there are no lives left the game is over and the score is compared to the leaderboard. 
+#### A video demo can be found <a href="https://www.youtube.com/watch?v=IJ5TDT52_ro" target="_blank" rel="noreferrer noopener">here</a>.
 </details>
