@@ -27,6 +27,7 @@ const int shootButton = 3;
 const int buzzerPin = 8;
 const int buzzerShootDuration = 200;
 const int buzzerLaserDuration = 300;
+const int buzzerShortDuration = 100;
 // variables for joystick
 const int minThreshold = 300;
 const int maxThreshold = 600;
@@ -1004,31 +1005,35 @@ void jsForMenu() {
     isMovedY = true;
     currentMenu().onDown();
     needsLCDUpdate = true;
+    joystickSound();
   }
 
   if (yValue >= maxThresholdMenu && isMovedY == false) {
     isMovedY = true;
     currentMenu().onUp();
     needsLCDUpdate = true;
+    joystickSound();
   }
 
   if (xValue <= minThresholdMenu && isMovedX == false) {
     isMovedX = true;
     currentMenu().onRight();
     needsLCDUpdate = true;
+    joystickSound();
   }
 
   if (xValue >= maxThresholdMenu && isMovedX == false) {
     isMovedX = true;
     currentMenu().onLeft();
     needsLCDUpdate = true;
+    joystickSound();
   }
 
-  if (xValue >= minThresholdMenu && xValue <= maxThresholdMenu) {
+  if (xValue > minThresholdMenu && xValue < maxThresholdMenu) {
     isMovedX = false;
   }
 
-  if (yValue >= minThresholdMenu && yValue <= maxThresholdMenu) {
+  if (yValue > minThresholdMenu && yValue < maxThresholdMenu) {
     isMovedY = false;
   }
 }
@@ -1310,7 +1315,7 @@ void shoot() {
       // shoot a bullet and make a sound
       if (shootColumns[ship] == 0) {
         shootColumns[ship] = 7;
-        tone(buzzerPin, NOTE_G5, buzzerShootDuration);
+        buttonSound();
       }
     }
   }
@@ -1325,12 +1330,12 @@ void buttonIsPressed() {
     // call the current menu function
     currentMenu().onPress();
     needsLCDUpdate = true;
+    joystickButtonSound();
     if (isPlaying == true) {
       // deploy a super laser and make a sound
       if (nrOfSpecialLasers != 0) {
         for (int i = 0; i <= matrixSize; i++) {
           shootColumns[i] = 7;
-          tone(buzzerPin, NOTE_C6, buzzerLaserDuration);
         }
         //decrese nr of lasers
         nrOfSpecialLasers--;
@@ -1340,7 +1345,25 @@ void buttonIsPressed() {
   lastPress = millis();
 }
 
-
+// sound when moving the joystick
+void joystickSound() {
+  tone(buzzerPin, NOTE_GS4, buzzerShortDuration);
+}
+// sound when pressing the button
+void buttonSound() {
+  tone(buzzerPin, NOTE_G5, buzzerShootDuration);
+}
+// sound when pressing the joystick
+void joystickButtonSound() {
+  if (isPlaying == false) {
+    tone(buzzerPin, NOTE_DS5, buzzerShortDuration);
+  }
+  else {
+    if (nrOfSpecialLasers != 0) {
+      tone(buzzerPin, NOTE_C6, buzzerLaserDuration);
+    }
+  }
+}
 // intro music function
 void introMusic() {
   // iterate over the notes of the melody.
@@ -1426,11 +1449,12 @@ void setup() {
 
 
 void loop() {
-  // eliminate debounce of the button
+  // eliminate debounce button
   debounceButton();
   // control the menu with joystick
-  jsForMenu();
-
+  if (isPlaying == false) {
+    jsForMenu();
+  }
   // if the screen needs to be update it's going to be updated
   // exception for about menu that always needs to be updated
   if (needsLCDUpdate == true || activeMenu == 4) {
