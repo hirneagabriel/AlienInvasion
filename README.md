@@ -77,5 +77,5 @@
 ##### The game has 2 main functions: one for game logic and one for displaying on the matrix.
 ##### The game function controls all the logic behind the game. Each game object can only move on one column. So for each type of object, I made an array of length 8. One controls the enemies, one the bullets, and one the laser drop.  So if the arrayOfBullet[1] = 0 that means that there are no bullets in column 1, if the arrayOfBullet[1] = 6 that means that there is one bullet in collum 1 row 6.  
 ##### The enemies will be spawned randomly. They will stay still for one frame duration, then descend to the player. Depending on the difficulty, at k frames, the frame duration will decrease. If one enemy is out of view on a matrix the enemy will be set to 0 and one life from the player will be taken. If a collision with the ship is detected also one life is taken. If there are no lives left the game is over and the score is compared to the leaderboard. 
-#### A video demo can be found <a href="https://www.youtube.com/watch?v=IJ5TDT52_ro" target="_blank" rel="noreferrer noopener">here</a>.
+#### A video demo can be found <a href="https://www.youtube.com/watch?v=pnn6EfLfBNk" target="_blank" rel="noreferrer noopener">here</a>.
 </details>
