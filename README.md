@@ -6,7 +6,7 @@
 <summary> __STORY OF THE GAME__
   </summary>
 
-#### AlienInvasion is a game where you are the last remaining hope of humankind! Get in your ship and defend the earth from the aliens! Kill as much enemys as you can. Don't let enemies pass you or the Earth is doomed!!!
+#### AlienInvasion is a game where you are the last remaining hope of humankind! Get in your ship and defend the Earth from the aliens! Kill as much enemys as you can. Don't let enemies pass you or the Earth is doomed!!!
 #### The game is inspired by old games like <a href="https://www.youtube.com/watch?v=tKobl50jrLk" target="_blank" rel="noreferrer noopener">Space Impact</a> and <a href="https://www.youtube.com/watch?v=MU4psw3ccUI&t=99s" target="_blank" rel="noreferrer noopener">Space Invaders</a>. 
   
 </details>
@@ -19,8 +19,18 @@
 - ##### In an 8x8 led matrix the ship is... a dot and the enemies are... also red dots. But I will make the enemies 2 dots so we can differentiate the enemy from the player.
   
 - ##### For the controls, I choose a joystick. And for the shooting part, I'm going to use a separate button. Oh, and the thingy that we shoot is going to be? Yes! You guessed it a dot!
-- ##### If the joystick is pressed a special ability will take place (a laser will kill all the enemies). 
-- ##### So we have the ship that is going to move left and right on the last row. And we have the enemies coming toward us on the columns at a speed that is going to increase over time. If the enemies pass us or hit us, we are going to lose a life. If we lose all lives we die.
+  
+#### Controlling the menu:
+- ##### To scroll the menu you need to move the joystick up and down.
+- ##### To enter a section on the menu you need to press the joystick.
+- ##### To exit a secondary menu to the Main Menu you need to move the joystick to the left.
+- ##### In settings if you want to edit a setting you need to press the button one time. The arrow will start to blink. You can now move left, right, up and down to edit the setting.
+- #####  In the Play menu, a message will be displayed on the LCD. If the "Press the btn to play" message is displayed you can exit the menu or press the joystick to play the game. If "Game over" is displayed you need to press the button once then you can exit the menu. Same for the " You reach top 3!" message.
+#### Playing the game:
+- ##### Once you start the game a dot will appear in the last row of the matrix. You can move that dot left and right with the joystick.
+- ##### To shoot you need to press the yellow button.
+- ##### To use the special Laser ability you need to press the joystick.
+  
 </details>
 
 <details>
@@ -38,7 +48,7 @@
   - ##### 10k resitor 100 resitor 220 resitor and 1k resistor
   - ##### 2 10 µF capacitor and one ceramic capacitor
   - ##### some breadboards(I used 3)
- #### I'm not going to show how to connect each component because I have already connected all the components. I'm also too lazy to do a complete tutorial for this stuff. But I'm going to put some useful links(in the future).
+ #### I'm not going to show how to connect each component because I have already connected all the components. I'm also too lazy to do a complete tutorial for this stuff.
  #### Version 1.0. It was my first time putting the project altogether and it worked but it had some imperfect contacts.
   
   ![20211208_131605](https://user-images.githubusercontent.com/61494964/145199783-2cd0015d-64a4-4c7f-849d-834ab1ea010d.jpg)
@@ -51,7 +61,8 @@
   ![20211215_124258](https://user-images.githubusercontent.com/61494964/146172442-86fddb9f-018a-460e-8b45-6d527258aafe.jpg)
 
  #### It's a more stable setup that is fixated better in the cardboard box. I've never had a problem with the wire connection so far, and I can transport it safely to faculty in my bag. Probably the final state. Maybe in the future, I will make a more good looking setup in my free time. 
- 
+#### Useful links:
+- ##### <a href="https://github.com/hirneagabriel/AlienInvasion/blob/main/AlienInvasion.ino" target="_blank" rel="noreferrer noopener">LCD connection to Arduino</a>
 </details>
 
 <details>
