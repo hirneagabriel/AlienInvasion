@@ -59,8 +59,14 @@
   ![20211215_124230](https://user-images.githubusercontent.com/61494964/146172343-776d8501-8762-4187-b89f-199f9d07fb94.jpg)
  ##### Back view
   ![20211215_124258](https://user-images.githubusercontent.com/61494964/146172442-86fddb9f-018a-460e-8b45-6d527258aafe.jpg)
+ 
+   #### It's a more stable setup that is fixated better in the cardboard box. I've never had a problem with the wire connection so far, and I can transport it safely to faculty in my bag. Probably the final state. Maybe in the future, I will make a more good looking setup in my free time. 
+  
+  
+ #### UPDATE! I built Version 1.2.1! It's mostly the same as Version 1.2, but I changed a small capacitor with a bigger one for better performance. Also, I change the button position. Now you can hold the game and play!
+![20211222_091801](https://user-images.githubusercontent.com/61494964/147052535-42e63175-7d10-4c8e-8dd7-7296ee1345e7.jpg)
 
- #### It's a more stable setup that is fixated better in the cardboard box. I've never had a problem with the wire connection so far, and I can transport it safely to faculty in my bag. Probably the final state. Maybe in the future, I will make a more good looking setup in my free time. 
+
 #### Useful links:
 - ##### <a href="https://github.com/hirneagabriel/AlienInvasion/blob/main/AlienInvasion.ino" target="_blank" rel="noreferrer noopener">LCD connection to Arduino</a>
 </details>
